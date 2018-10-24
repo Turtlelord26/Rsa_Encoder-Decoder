@@ -1,6 +1,6 @@
 # Rsa_Encoder-Decoder
 
-The empty parent src/ directory is necessary for the abstract filepathing implemetned in RsaModule. Here follows the program's readme text.
+The empty parent src/ directory is necessary for the abstract filepathing implemented in RsaModule. Here follows the program's readme text.
 
 This program is an implementation of RSA public key cryptography. Its functionality includes storage of the user's keys and other users' public keys, encryption of plaintext messages using any stored public key, and decryption of messages with the user's private key.
 
