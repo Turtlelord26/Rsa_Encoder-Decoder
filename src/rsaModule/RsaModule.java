@@ -4,7 +4,6 @@ import java.io.File;
 import java.math.BigInteger;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.Random;
 import java.util.Scanner;
 
 /**
@@ -15,34 +14,16 @@ import java.util.Scanner;
  */
 public class RsaModule {
 	
-	/**
-	 * Stores the user's public key to append to outgoing messages.
-	 */
 	private RsaPublicKey publicKey;
 	
-	/**
-	 * Stores the user's private key for decrypting incoming messages.
-	 */
 	private RsaPrivateKey privateKey;
 	
-	/**
-	 * Stores the user's list of known public keys for encrypting outgoing messages.
-	 */
-	private PHashMap<String, RsaPublicKey> addressBook;
+	private StringableHashMap<String, RsaPublicKey> addressBook;
 	
-	/**
-	 * Stores a FileRW object for the plaintext.
-	 */
 	private FileRW plainTextRW;
 	
-	/**
-	 * Stores a FileRW object for the ciphertext.
-	 */
 	private FileRW cipherTextRW;
 	
-	/**
-	 * Stores a file RW object for the key list.
-	 */
 	private FileRW keyTextRW;
 	
 	/**
@@ -56,11 +37,9 @@ public class RsaModule {
 		plainTextRW = new FileRW(plainTextFile);
 		cipherTextRW = new FileRW(cipherTextFile);
 		keyTextRW = new FileRW(keyTextFile);
-		addressBook = new PHashMap<String, RsaPublicKey>();
+		addressBook = new StringableHashMap<String, RsaPublicKey>();
 		String keys[] = keyTextRW.readFile().split(System.lineSeparator());
-		if (keys.length < 2) {
-			generateNewKeys();
-		} else {
+		if (detectExistingKeys(keys)) {
 			//Load public keys from file into addressBook and RsaKey fields
 			this.privateKey = new RsaPrivateKey(keys[0]);
 			RsaPublicKey newkey;
@@ -71,8 +50,19 @@ public class RsaModule {
 				}
 				addressBook.put(newkey.getID(), newkey);
 			}
+		} else {
+			generateNewKeys();
 		}
 		commandSwitch();
+	}
+	
+	private Boolean detectExistingKeys(String[] keys) {
+		
+		if (keys.length < 2) {
+			return false;
+		} else {
+			return true;
+		}
 	}
 	
 	/**
@@ -201,104 +191,18 @@ public class RsaModule {
 		//Program Terminates
 	}
 	
-	/**
-	 * Getter method for the current public key.
-	 * @return The currently stored RsaPublicKey object.
-	 */
-	public RsaPublicKey getPublicKey() {
-		return publicKey;
+	private void generateNewKeys() {
+		KeySet newKeys = new KeyMaker().getNewKeys();
+		publicKey = newKeys.getPublicKey();
+		privateKey = newKeys.getPrivateKey();
+		saveKeysToFile();
+		
 	}
 	
-	/**
-	 * Setter method for the public key.
-	 * @param publicKey A new RsaPublicKey object.
-	 */
-	private void setPublicKey(RsaPublicKey publicKey) {
-		this.publicKey = publicKey;
-	}
-	/**
-	 * Getter method for the current private key.
-	 * @return The currently stored RsaPrivateKey object
-	 */
-	private RsaPrivateKey getPrivateKey() {
-		return privateKey;
-	}
-	
-	/**
-	 * Setter method for the private key.
-	 * @param privateKey A new RsaPrivateKey object.
-	 */
-	private void setPrivateKey(RsaPrivateKey privateKey) {
-		this.privateKey = privateKey;
-	}
-	
-	/**
-	 * Method generates a new public and private key for the user, stores them in the appropriate fields, and saves them to files.
-	 */
-	public void generateNewKeys() {
-		//pick two random large primes
-		int bitLengthP = 41 + (int) (10 * Math.random());//Flag: Insecure RNG usage
-		BigInteger p = BigInteger.probablePrime(bitLengthP, new Random());//Flag: Questionable RNG Usage
-		
-		//Generate a near but not identical bitlength for the second prime
-		int bitLengthQ = bitLengthP;
-		while (Math.abs(bitLengthQ - bitLengthP) < 5) {
-			bitLengthQ = bitLengthP - 5 + (int) (10 * Math.random());//Flag: Insecure RNG Usage
-		}
-		BigInteger q = BigInteger.probablePrime(bitLengthQ, new Random());//Flag: Questionable RNG Usage
-		
-		//Calculate RSA significant values. m1 signifies 'minus 1'.
-		BigInteger modulus = p.multiply(q);
-		BigInteger pm1 = p.subtract(BigInteger.ONE);
-		BigInteger qm1 = q.subtract(BigInteger.ONE);
-		BigInteger totient = (pm1.multiply(qm1)).divide(pm1.gcd(qm1));
-		BigInteger pubExpnt = new BigInteger("65537");
-		
-		//Calculate the private key exponent with helper method
-		BigInteger priExpnt = calcPriKeyExpnt(pubExpnt, totient);
-		
-		//Create RsaKey objects and store to fields
-		setPublicKey(new RsaPublicKey(modulus, pubExpnt, "self"));
-		setPrivateKey(new RsaPrivateKey(modulus, priExpnt));
-		
-		//Save to file
-		String priKey = "selfPrivate:" + getPrivateKey().toString() + System.lineSeparator();
-		addressBook.put("self", getPublicKey());
+	private void saveKeysToFile() {
+		String priKey = "selfPrivate:" + privateKey.toString() + System.lineSeparator();
+		addressBook.put("self", publicKey);
 		keyTextRW.writeToFile(priKey + addressBook.toString());
-	}
-	
-	/**
-	 * A helper method for generateNewKeys() that calculates a private key exponent from a public key exponent and totient(modulus)
-	 * via the Extended Euclidean Algorithm.
-	 * @param pubExpnt The previously calculated exponent of the public key.
-	 * @param totient The totient of the modulus of the public and private key.
-	 * @return The exponent of the private key corresponding to the input public key values.
-	 */
-	private BigInteger calcPriKeyExpnt(BigInteger pubExpnt, BigInteger totient) {
-		BigInteger r1 = totient;
-		BigInteger t1 = BigInteger.ZERO;
-		BigInteger r2 = pubExpnt;
-		BigInteger t2 = BigInteger.ONE;
-		BigInteger r3 = r1.remainder(r2);
-		BigInteger q = r1.divide(r2);
-		BigInteger t3 = t1.subtract(q.multiply(t2));
-		while (! r3.equals(BigInteger.ZERO)) {
-			r1 = r2;
-			t1 = t2;
-			r2 = r3;
-			t2 = t3;
-			q = r1.divide(r2);
-			r3 = r1.remainder(r2);
-			t3 = t1.subtract(q.multiply(t2));
-		}
-		if (! t3.equals(totient)) {
-			System.out.println("t3 Verification Error in Private Key Calculation. Strongly recommend regenerating keys.");
-		}
-		if (t2.compareTo(BigInteger.ZERO) < 0) {
-			return totient.add(t2);
-		} else {
-			return t2;
-		}
 	}
 	
 	/**
@@ -307,17 +211,13 @@ public class RsaModule {
 	 * @param <K> Key.
 	 * @param <V> Value.
 	 */
-	public class PHashMap<K, V> extends HashMap<K, V> {
+	public class StringableHashMap<K, V> extends HashMap<K, V> {
 		
 		/**
 		 * Default serialization constant.
 		 */
 		private static final long serialVersionUID = 1L;
-
-		/**
-		 * 
-		 * @return 
-		 */
+		
 		@Override
 		public String toString() {
 			StringBuilder printForm = new StringBuilder();
