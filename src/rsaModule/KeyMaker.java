@@ -15,6 +15,8 @@ public class KeyMaker {
 	
 	private KeySet newKeys;
 	
+	private Boolean randomNumbersAreNotPrime = true;
+	
 	private static final int minimumFirstPrimeBitLength = 41;
 	
 	private static final int rangeForFirstPrimeBitLength = 10;
@@ -26,7 +28,9 @@ public class KeyMaker {
 	private static final BigInteger publicKeyExponent = new BigInteger("65537");
 	
 	public KeyMaker() {
-		generateNewKeys();
+		while (randomNumbersAreNotPrime) {
+			generateNewKeys();
+		}
 		newKeys = new KeySet(publicKey, privateKey);
 	}
 	
@@ -36,7 +40,7 @@ public class KeyMaker {
 		//Calculate RSA significant values.
 		BigInteger modulus = p.multiply(q);
 		BigInteger totient = calculateTotient(p, q);
-		BigInteger privateKeyExponent = calculatePrivateKeyExponent(publicKeyExponent, totient);
+		BigInteger privateKeyExponent = calculatePrivateKeyExponent(totient);
 		
 		//Create RsaKey objects and store to fields
 		publicKey = new RsaPublicKey(modulus, publicKeyExponent, "self");
@@ -44,21 +48,21 @@ public class KeyMaker {
 	}
 	
 	private void generateRandomLargePrimes() {
-		int bitLengthP = minimumFirstPrimeBitLength + (int) (rangeForFirstPrimeBitLength * Math.random());//Flag: Insecure RNG usage
-		p = BigInteger.probablePrime(bitLengthP, new Random());//Flag: Questionable RNG Usage
+		int bitLengthP = minimumFirstPrimeBitLength + (int) (rangeForFirstPrimeBitLength * Math.random());//Flag: Default RNG usage
+		p = BigInteger.probablePrime(bitLengthP, new Random());//Flag: Default RNG Usage
 		q = generateQFromP(p, bitLengthP);
 	}
 	
 	private BigInteger generateQFromP(BigInteger p, int bitLengthP) {
 		int bitLengthQ = applyRandomOffsetWithMinimumSeparation(bitLengthP);
-		BigInteger q = BigInteger.probablePrime(bitLengthQ, new Random());//Flag: Questionable RNG Usage
+		BigInteger q = BigInteger.probablePrime(bitLengthQ, new Random());//Flag: Default RNG Usage
 		return q;
 	}
 	
 	private int applyRandomOffsetWithMinimumSeparation(int bitLengthP) {
 		int bitLengthQ = bitLengthP;
 		while (Math.abs(bitLengthQ - bitLengthP) < minimumPrimeBitLengthDifference) {
-			bitLengthQ = bitLengthP - (maximumPrimeBitLengthDifference / 2) + (int) (maximumPrimeBitLengthDifference * Math.random());//Flag: Insecure RNG Usage
+			bitLengthQ = bitLengthP - (maximumPrimeBitLengthDifference / 2) + (int) (maximumPrimeBitLengthDifference * Math.random());//Flag: Default RNG Usage
 		}
 		return bitLengthQ;
 	}
@@ -77,10 +81,10 @@ public class KeyMaker {
 	 * @param totient The totient of the modulus of the public and private key.
 	 * @return The exponent of the private key corresponding to the input public key values.
 	 */
-	private BigInteger calculatePrivateKeyExponent(BigInteger publicExponent, BigInteger totient) {
+	private BigInteger calculatePrivateKeyExponent(BigInteger totient) {
 		BigInteger r1 = totient;
 		BigInteger t1 = BigInteger.ZERO;
-		BigInteger r2 = publicExponent;
+		BigInteger r2 = publicKeyExponent;
 		BigInteger t2 = BigInteger.ONE;
 		BigInteger r3 = r1.remainder(r2);
 		BigInteger q = r1.divide(r2);
@@ -94,8 +98,8 @@ public class KeyMaker {
 			r3 = r1.remainder(r2);
 			t3 = t1.subtract(q.multiply(t2));
 		}
-		if (! t3.equals(totient)) {
-			System.out.println("t3 Verification Error in Private Key Calculation. Strongly recommend regenerating keys.");
+		if (t3.equals(totient)) {
+			randomNumbersAreNotPrime = false;
 		}
 		if (t2.compareTo(BigInteger.ZERO) < 0) {
 			return totient.add(t2);

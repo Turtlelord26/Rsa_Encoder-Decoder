@@ -57,7 +57,6 @@ public class RsaModule {
 	}
 	
 	private Boolean detectExistingKeys(String[] keys) {
-		
 		if (keys.length < 2) {
 			return false;
 		} else {
