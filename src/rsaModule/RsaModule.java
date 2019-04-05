@@ -9,7 +9,7 @@ import java.util.Scanner;
 /**
  * A demonstration program that can encrypt and decrypt text with an implementation of the RSA public key cryptosystem.
  * It uses text files to store keys between sessions, and appends its own current public key to messages it has encrypted, 
- * so that recipients can use it to respond. Manual entry of key data is supported but not failsafed.
+ * so that recipients can use it to respond. Manual entry of key data is allowed but not failsafed.
  * @author James Talbott
  */
 public class RsaModule {
@@ -40,16 +40,7 @@ public class RsaModule {
 		addressBook = new StringableHashMap<String, RsaPublicKey>();
 		String keys[] = keyTextRW.readFile().split(System.lineSeparator());
 		if (detectExistingKeys(keys)) {
-			//Load public keys from file into addressBook and RsaKey fields
-			this.privateKey = new RsaPrivateKey(keys[0]);
-			RsaPublicKey newkey;
-			for (int i = 1; i < keys.length; i++) {
-				newkey = new RsaPublicKey(keys[i]);
-				if (newkey.getID().equals("self")) {
-					this.publicKey = newkey;
-				}
-				addressBook.put(newkey.getID(), newkey);
-			}
+			loadExistingKeysIntoAddressBook(keys);
 		} else {
 			generateNewKeys();
 		}
@@ -61,6 +52,18 @@ public class RsaModule {
 			return false;
 		} else {
 			return true;
+		}
+	}
+	
+	private void loadExistingKeysIntoAddressBook(String[] keys) {
+		this.privateKey = new RsaPrivateKey(keys[0]);
+		RsaPublicKey newkey;
+		for (int i = 1; i < keys.length; i++) {
+			newkey = new RsaPublicKey(keys[i]);
+			if (newkey.getID().equals("self")) {
+				this.publicKey = newkey;
+			}
+			addressBook.put(newkey.getID(), newkey);
 		}
 	}
 	
