@@ -26,6 +26,8 @@ public class RsaModule {
 	
 	private FileRW keyTextRW;
 	
+	private Scanner scan;
+	
 	/**
 	 * Constructor creates and stores FileRW objects, and loads data from those files into the appropriate fields.
 	 * It then engages the user command input method.
@@ -44,6 +46,8 @@ public class RsaModule {
 		} else {
 			generateNewKeys();
 		}
+		scan = new Scanner(System.in);
+		scan.useDelimiter(System.lineSeparator());
 		commandSwitch();
 	}
 	
@@ -84,8 +88,6 @@ public class RsaModule {
 	 * Notable inputs include "exit" to terminate the program and "help" for information on further commands.
 	 */
 	public void commandSwitch() {
-		Scanner scan = new Scanner(System.in);
-		scan.useDelimiter(System.lineSeparator());
 		System.out.println("Enter a command, or type \"help\" for a list of commands.");
 		String token = scan.next();
 		String command = token.trim();
@@ -102,87 +104,14 @@ public class RsaModule {
 			 * Command to encrypt available plaintext using a stored public key.
 			 */
 			} else if (command.equals("encrypt")) {
-				System.out.println("Enter an ID to select the corresponding public key.");
-				token = scan.next();
-				command = token.trim();
-				RsaPublicKey key = addressBook.get(command);
-				if (key == null) {
-					System.out.println("Error: entered ID has no matching Key stored.");
-				} else {
-					System.out.println("Type an identifier to append your public key to this message, or type \"skip\" "
-							+ "to skip this step. Identifiers must not contain commas, colons, or newlines.");
-					token = scan.next();
-					command = token.trim();
-					if (! command.equals("skip") && 
-							! command.equals("self") && 
-							command.indexOf(',') == -1 && 
-							command.indexOf(":") == -1 && 
-							command.indexOf('\n') == -1) {
-						String plainText = plainTextRW.readFile();
-						String cipherText = new RsaEncoder(key, plainText).getCipherText();
-						RsaPublicKey outgoingKey = new RsaPublicKey(publicKey.getModulus(), publicKey.getExponent(), command);
-						cipherTextRW.writeToFile(cipherText + System.lineSeparator() + outgoingKey.toString());
-						System.out.println("Encrypted text written to cipherText.txt");
-					} else {
-						System.out.println("Error: malformed identifer entered. No text encrypted.");
-					}
-				}
-			/**
-			 * Command to decrypt available ciphertext from file using our private key.
-			 * Naturally, this will only work if the ciphertext was encrypted with our public key.
-			 */
+				encrypt();
 			} else if (command.equals("decrypt")) {
-				String[] cipherFileText = cipherTextRW.readFile().split(System.lineSeparator());
-				String cipherText = cipherFileText[0];
-				String plainText = new RsaDecoder(privateKey, cipherText).getPlainText();
-				plainTextRW.writeToFile(plainText);
-				System.out.println("Decrypted text written to plainText.txt");
-				if (cipherFileText.length >= 2 && ! addressBook.containsKey(cipherFileText[1].substring(0, cipherFileText[1].indexOf(':')))) {
-					String[] appendedKey = cipherFileText[1].split(":");
-					String incomingID = appendedKey[0];
-					String[] incomingKey = appendedKey[1].split(",");
-					addressBook.put(incomingID, new RsaPublicKey(
-							new BigInteger(incomingKey[0]), new BigInteger(incomingKey[1]), incomingID));
-					StringBuilder newKeyText = new StringBuilder();
-					newKeyText.append("selfPrivate: " + privateKey.toString() + System.lineSeparator());
-					for (RsaPublicKey key : addressBook.values()) {
-						newKeyText.append(key.toString() + System.lineSeparator());
-					}
-					keyTextRW.writeToFile(newKeyText.toString());
-					System.out.println("Sender key saved with ID: " + incomingID); 
-				}
-			/**
-			 * Command to generate a new public/private key pair for self.
-			 */
+				decrypt();
 			} else if (command.equals("generate new keys")) {
-				System.out.println("Are you sure? Generating new keys is irreversible and any ciphertext encoded with "
-						+ "old keys will be indecipherable.\nType \"Confirm\" (no quotes) to generate new keys.");
-				token = scan.next();
-				command = token.trim();
-				if (command.equals("Confirm")) {
-					generateNewKeys();
-				} else {
-					System.out.println("New keys have not been generated.");
-				}
-			}
-			/**
-			 * Help command provides information on other valid commands.
-			 */
-			else if (command.equals("help")) {
-				System.out.println("Accepted commands are:");
-				System.out.print("\"encrypt\": Runs the RSA encryption algorithm on the text in assets/PlainText.txt using a key ");
-				System.out.print("in assets/KeyText.txt. User will be prompted to select an ID corresponding to the public key ");
-				System.out.print("desired for encryption use and then for an ID to append to user's own outgoing public key. ");
-				System.out.println("The encrypted message will be written to assets/CipherText.txt.");
-				System.out.print("\"encrypt to self\": A shortcut for the encrypt command that encrypts the message with the user's ");
-				System.out.println("own public key.");
-				System.out.print("\"decrypt\": Runs the RSA decryption algorithm on the text in assets/CipherText.txt using the User's ");
-				System.out.print("private key. Decrypted plaintext is stored in assets/PlainText.txt. If a public key is appended to ");
-				System.out.println("the message, it will be added to the user's address book if it is not already there.");
-				System.out.print("\"generate new keys\": Forces regeneration of the user's private and public keys. ");
-				System.out.println("This command has a verify step.");
-			}
-			else {
+				confirmGenerateNewKeys();
+			} else if (command.equals("help")) {
+				printHelpText();
+			} else {
 				System.out.println("Unrecognized Command.");
 			}
 			System.out.println("Enter a command, or type \"help\" for a list of commands.");
@@ -191,6 +120,76 @@ public class RsaModule {
 		}
 		scan.close();
 		//Program Terminates
+	}
+	
+	private void encrypt() {
+		System.out.println("Enter an ID to select the corresponding public key.");
+		String token = scan.next();
+		String command = token.trim();
+		RsaPublicKey key = addressBook.get(command);
+		if (key == null) {
+			System.out.println("Error: entered ID has no matching Key stored.");
+		} else {
+			System.out.println("Type an identifier to append your public key to this message, or type \"skip\" "
+					+ "to skip this step. Identifiers must not contain commas, colons, or newlines.");
+			token = scan.next();
+			command = token.trim();
+			if (isValidPubKeyID(command)) {
+				encryptTextAndWriteToFile(key, command);
+			} else {
+				System.out.println("Error: malformed identifer entered. No text encrypted.");
+			}
+		}
+	}
+	
+	private Boolean isValidPubKeyID(String command) {
+		return ! command.equals("skip") && 
+				! command.equals("self") && 
+				command.indexOf(',') == -1 && 
+				command.indexOf(":") == -1 && 
+				command.indexOf('\n') == -1;
+	}
+	
+	private void encryptTextAndWriteToFile(RsaPublicKey key, String identifier) {
+		String plainText = plainTextRW.readFile();
+		String cipherText = new RsaEncoder(key, plainText).getCipherText();
+		RsaPublicKey outgoingKey = new RsaPublicKey(publicKey.getModulus(), publicKey.getExponent(), identifier);
+		cipherTextRW.writeToFile(cipherText + System.lineSeparator() + outgoingKey.toString());
+		System.out.println("Encrypted text written to cipherText.txt");
+	}
+	
+	private void decrypt() {
+		String[] cipherFileText = cipherTextRW.readFile().split(System.lineSeparator());
+		String cipherText = cipherFileText[0];
+		String plainText = new RsaDecoder(privateKey, cipherText).getPlainText();
+		plainTextRW.writeToFile(plainText);
+		System.out.println("Decrypted text written to plainText.txt");
+		if (cipherFileText.length >= 2 && ! addressBook.containsKey(cipherFileText[1].substring(0, cipherFileText[1].indexOf(':')))) {
+			String[] appendedKey = cipherFileText[1].split(":");
+			String incomingID = appendedKey[0];
+			String[] incomingKey = appendedKey[1].split(",");
+			addressBook.put(incomingID, new RsaPublicKey(
+					new BigInteger(incomingKey[0]), new BigInteger(incomingKey[1]), incomingID));
+			StringBuilder newKeyText = new StringBuilder();
+			newKeyText.append("selfPrivate: " + privateKey.toString() + System.lineSeparator());
+			for (RsaPublicKey key : addressBook.values()) {
+				newKeyText.append(key.toString() + System.lineSeparator());
+			}
+			keyTextRW.writeToFile(newKeyText.toString());
+			System.out.println("Sender key saved with ID: " + incomingID);
+		}
+	}
+	
+	private void confirmGenerateNewKeys() {
+		System.out.println("Are you sure? Generating new keys is irreversible and any ciphertext encoded with "
+				+ "old keys will be indecipherable.\nType \"Confirm\" (no quotes) to generate new keys.");
+		String token = scan.next();
+		String command = token.trim();
+		if (command.equals("Confirm")) {
+			generateNewKeys();
+		} else {
+			System.out.println("New keys have not been generated.");
+		}
 	}
 	
 	private void generateNewKeys() {
@@ -207,11 +206,23 @@ public class RsaModule {
 		keyTextRW.writeToFile(priKey + addressBook.toString());
 	}
 	
+	private void printHelpText() {
+		System.out.println("Accepted commands are:");
+		System.out.print("\"encrypt\": Runs the RSA encryption algorithm on the text in assets/PlainText.txt using a key ");
+		System.out.print("in assets/KeyText.txt. User will be prompted to select an ID corresponding to the public key ");
+		System.out.print("desired for encryption use and then for an ID to append to user's own outgoing public key. ");
+		System.out.println("The encrypted message will be written to assets/CipherText.txt.");
+		System.out.print("\"encrypt to self\": A shortcut for the encrypt command that encrypts the message with the user's ");
+		System.out.println("own public key.");
+		System.out.print("\"decrypt\": Runs the RSA decryption algorithm on the text in assets/CipherText.txt using the User's ");
+		System.out.print("private key. Decrypted plaintext is stored in assets/PlainText.txt. If a public key is appended to ");
+		System.out.println("the message, it will be added to the user's address book if it is not already there.");
+		System.out.print("\"generate new keys\": Forces regeneration of the user's private and public keys. ");
+		System.out.println("This command has a verify step.");
+	}
+	
 	/**
 	 * An extension of HashMap meant solely to provide known behavior for toString().
-	 * @author James
-	 * @param <K> Key.
-	 * @param <V> Value.
 	 */
 	public class StringableHashMap<K, V> extends HashMap<K, V> {
 		

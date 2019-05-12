@@ -39,11 +39,9 @@ public class RsaDecoder extends RSAEncryptionOperator {
 		BigInteger encryptedChar, decryptedChar;
 		String[] decryptedUnits = new String[cipherUnits.length];
 		for (int index = 0; index < cipherUnits.length; index++) {
-			System.out.println("Unit: " + cipherUnits[index]);//Testline
 			encryptedChar = new BigInteger(cipherUnits[index]);
 			decryptedChar = encryptedChar.modPow(privateKey.getExponent(), privateKey.getModulus());
 			decryptedUnits[index] = decryptedChar.toString();
-			System.out.println("Decrypted Unit: " + decryptedUnits[index]);//Testline
 		}
 		return decryptedUnits;
 	}
@@ -54,7 +52,6 @@ public class RsaDecoder extends RSAEncryptionOperator {
 		numericUnits = fillOutUnitsToConstantLength(numericUnits, cipherUnitsLength);
 		numericUnits[lastUnitIndex] = adjustLastUnitLength(numericUnits, cipherUnitsLength, lastUnitLength);
 		for (int j = 0; j < numericUnits.length; j++) {
-			System.out.println("With restored leading zeroes: " + numericUnits[j]);//Testline
 		}
 		return numericUnits;
 	}
@@ -68,7 +65,7 @@ public class RsaDecoder extends RSAEncryptionOperator {
 	
 	private int getTargetLengthOfLastUnit(int totalLength, int lastUnitLength) {
 		int targetLength = lastUnitLength;
-		while (totalLength % lengthOfNumericCharacters != 0) {//need to use totallength!
+		while (totalLength % lengthOfNumericCharacters != 0) {
 			targetLength++;
 			totalLength++;
 		}
@@ -76,7 +73,6 @@ public class RsaDecoder extends RSAEncryptionOperator {
 	}
 	
 	private String convertNumericTextToPlainText(String numericText) {
-		System.out.println("Length: " + ((Integer) numericText.length()).toString());//Testline
 		String[] numericUnits = breakTextIntoUnits(numericText, lengthOfNumericCharacters);
 		char[] plainUnits = convertNumericCharactersToPlainCharacters(numericUnits);
 		return new String(plainUnits);
@@ -89,7 +85,6 @@ public class RsaDecoder extends RSAEncryptionOperator {
 		for (int index = 0; index < numericUnits.length; index++) {
 			numericCharacter = new Integer(Integer.parseInt(numericUnits[index]));
 			plainUnits[index] = ((char) numericCharacter.intValue());
-			System.out.println("Number Unit: " + numericUnits[index] + " || " + plainUnits[index]);//Testline
 		}
 		return plainUnits;
 	}
