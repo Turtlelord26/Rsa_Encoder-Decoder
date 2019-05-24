@@ -3,7 +3,6 @@ package rsaModule;
 import java.io.File;
 import java.math.BigInteger;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Scanner;
 
 /**
@@ -146,7 +145,7 @@ public class RsaModule {
 		return ! command.equals("skip") && 
 				! command.equals("self") && 
 				command.indexOf(',') == -1 && 
-				command.indexOf(":") == -1 && 
+				command.indexOf(':') == -1 && 
 				command.indexOf('\n') == -1;
 	}
 	
@@ -164,20 +163,32 @@ public class RsaModule {
 		String plainText = new RsaDecoder(privateKey, cipherText).getPlainText();
 		plainTextRW.writeToFile(plainText);
 		System.out.println("Decrypted text written to plainText.txt");
-		if (cipherFileText.length >= 2 && ! addressBook.containsKey(cipherFileText[1].substring(0, cipherFileText[1].indexOf(':')))) {
-			String[] appendedKey = cipherFileText[1].split(":");
-			String incomingID = appendedKey[0];
-			String[] incomingKey = appendedKey[1].split(",");
-			addressBook.put(incomingID, new RsaPublicKey(
-					new BigInteger(incomingKey[0]), new BigInteger(incomingKey[1]), incomingID));
-			StringBuilder newKeyText = new StringBuilder();
-			newKeyText.append("selfPrivate: " + privateKey.toString() + System.lineSeparator());
-			for (RsaPublicKey key : addressBook.values()) {
-				newKeyText.append(key.toString() + System.lineSeparator());
-			}
-			keyTextRW.writeToFile(newKeyText.toString());
-			System.out.println("Sender key saved with ID: " + incomingID);
+		if (cipherTextHasAppendedID(cipherFileText) && isUnsavedPublicKeyID(cipherFileText[1])) {
+			saveNewPublicKey(cipherFileText);
 		}
+	}
+	
+	private Boolean cipherTextHasAppendedID(String[] cipherFileText) {
+		return cipherFileText.length == 2;
+	}
+	
+	private boolean isUnsavedPublicKeyID(String cipherTextPublicKey) {
+		return ! addressBook.containsKey(cipherTextPublicKey.substring(0, cipherTextPublicKey.indexOf(':')));
+	}
+	
+	private void saveNewPublicKey(String[] cipherFileText) {
+		String[] appendedKey = cipherFileText[1].split(":");
+		String incomingID = appendedKey[0];
+		String[] incomingKey = appendedKey[1].split(",");
+		addressBook.put(incomingID, new RsaPublicKey(
+				new BigInteger(incomingKey[0]), new BigInteger(incomingKey[1]), incomingID));
+		StringBuilder newKeyText = new StringBuilder();
+		newKeyText.append("selfPrivate: " + privateKey.toString() + System.lineSeparator());
+		for (RsaPublicKey key : addressBook.values()) {
+			newKeyText.append(key.toString() + System.lineSeparator());
+		}
+		keyTextRW.writeToFile(newKeyText.toString());
+		System.out.println("Sender key saved with ID: " + incomingID);
 	}
 	
 	private void confirmGenerateNewKeys() {
@@ -197,7 +208,6 @@ public class RsaModule {
 		publicKey = newKeys.getPublicKey();
 		privateKey = newKeys.getPrivateKey();
 		saveKeysToFile();
-		
 	}
 	
 	private void saveKeysToFile() {
@@ -219,25 +229,5 @@ public class RsaModule {
 		System.out.println("the message, it will be added to the user's address book if it is not already there.");
 		System.out.print("\"generate new keys\": Forces regeneration of the user's private and public keys. ");
 		System.out.println("This command has a verify step.");
-	}
-	
-	/**
-	 * An extension of HashMap meant solely to provide known behavior for toString().
-	 */
-	public class StringableHashMap<K, V> extends HashMap<K, V> {
-		
-		/**
-		 * Default serialization constant.
-		 */
-		private static final long serialVersionUID = 1L;
-		
-		@Override
-		public String toString() {
-			StringBuilder printForm = new StringBuilder();
-			for (K key : this.keySet()) {
-				printForm.append(this.get(key).toString() + System.lineSeparator());
-			}
-			return printForm.toString();
-		}
 	}
 }

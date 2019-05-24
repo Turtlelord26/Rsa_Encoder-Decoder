@@ -76,7 +76,6 @@ public class RsaDecoder extends RSAEncryptionOperator {
 		String[] numericUnits = breakTextIntoUnits(numericText, lengthOfNumericCharacters);
 		char[] plainUnits = convertNumericCharactersToPlainCharacters(numericUnits);
 		return new String(plainUnits);
-		
 	}
 	
 	private char[] convertNumericCharactersToPlainCharacters(String[] numericUnits) {
