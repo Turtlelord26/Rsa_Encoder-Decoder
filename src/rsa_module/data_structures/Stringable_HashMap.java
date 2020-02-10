@@ -1,15 +1,9 @@
-package rsaModule;
+package rsa_module.data_structures;
 
 import java.util.HashMap;
 
-/**
- * An extension of HashMap with designed toString formatting.
- */
-public class StringableHashMap<K, V> extends HashMap<K, V> {
+public class Stringable_HashMap<K, V> extends HashMap<K, V> {
 
-	/**
-	 * Default serialization constant.
-	 */
 	private static final long serialVersionUID = 1L;
 	
 	@Override
