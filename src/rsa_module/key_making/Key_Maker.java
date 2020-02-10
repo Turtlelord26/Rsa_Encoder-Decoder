@@ -20,20 +20,20 @@ public class Key_Maker {
 	
 	private Key_Set new_keys;
 	
-	private Boolean randomNumbersAreNotPrime = true;
+	private Boolean random_numbers_are_not_prime = true;
 	
 	private static final int minimum_first_prime_bit_length = 41;
 	
-	private static final int range_for_first_prime_bit_length = 10;
+	private static final int maximum_first_prime_bit_length = 51;
 	
-	private static final int minimumPrimeBitLengthDifference = 5;
+	private static final int minimum_prime_bit_length_difference = 5;
 	
-	private static final int maximumPrimeBitLengthDifference = 10;
+	private static final int maximum_prime_bit_length_difference = 10;
 	
-	private static final BigInteger publicKeyExponent = new BigInteger("65537");
+	private static final BigInteger public_key_exponent = new BigInteger("65537");
 	
 	public Key_Maker() {
-		while (randomNumbersAreNotPrime) {
+		while (random_numbers_are_not_prime) {
 			generate_new_keys();
 		}
 		new_keys = new Key_Set(public_key, private_key);
@@ -45,43 +45,39 @@ public class Key_Maker {
 		//Calculate RSA significant values.
 		BigInteger modulus = p.multiply(q);
 		BigInteger totient = calculate_totient(p, q);
-		BigInteger privateKeyExponent = calculate_private_key_exponent(totient);
+		BigInteger private_key_exponent = calculate_private_key_exponent(totient);
 		
-		store_values_to_fields(modulus, privateKeyExponent);
+		store_new_keys_to_fields(modulus, private_key_exponent);
 	}
 	
 	private void generate_random_large_primes() {
-		int bitLengthP = minimum_first_prime_bit_length + (int) (range_for_first_prime_bit_length * random_number(1));
-		p = BigInteger.probablePrime(bitLengthP, new_random_generator());
-		q = generate_q_from_p(p, bitLengthP);
+		int bit_length_p = random_number(minimum_first_prime_bit_length, maximum_first_prime_bit_length);
+		p = BigInteger.probablePrime(bit_length_p, new_random_generator());
+		q = generate_q_from_p(p, bit_length_p);
 	}
 	
-	private double random_number(double scale) {
-		return Random_Number_Generator.generate_random_double(scale);
+	private int random_number(int minimum, int maximum) {
+		return Random_Number_Generator.generate_random_int(minimum, maximum);
 	}
 	
 	private Random new_random_generator() {
 		return Random_Number_Generator.generate_new_random_generator();
 	}
 	
-	private BigInteger generate_q_from_p(BigInteger p, int bitLengthP) {
-		int bitLengthQ = apply_random_offset_with_minimum_separation(bitLengthP);
-		BigInteger q = BigInteger.probablePrime(bitLengthQ, new_random_generator());
+	private BigInteger generate_q_from_p(BigInteger p, int bit_length_p) {
+		int bit_length_q = random_bit_length_within_range_of(bit_length_p);
+		BigInteger q = BigInteger.probablePrime(bit_length_q, new_random_generator());
 		return q;
 	}
 	
-	private int apply_random_offset_with_minimum_separation(int bitLengthP) {
-		int bitLengthQ = bitLengthP;
-		while (Math.abs(bitLengthQ - bitLengthP) < minimumPrimeBitLengthDifference) {
-			bitLengthQ = bitLengthP - (maximumPrimeBitLengthDifference / 2) + (int) (maximumPrimeBitLengthDifference * random_number(1));
-		}
-		return bitLengthQ;
+	private int random_bit_length_within_range_of(int bit_length_p) {
+		return bit_length_p + random_number(minimum_prime_bit_length_difference, maximum_prime_bit_length_difference);
 	}
 	
 	private BigInteger calculate_totient(BigInteger p, BigInteger q) {
-		BigInteger pMinusOne = p.subtract(BigInteger.ONE);
-		BigInteger qMinusOne = q.subtract(BigInteger.ONE);
-		BigInteger totient = (pMinusOne.multiply(qMinusOne)).divide(pMinusOne.gcd(qMinusOne));
+		BigInteger p_minus_one = p.subtract(BigInteger.ONE);
+		BigInteger q_minus_one = q.subtract(BigInteger.ONE);
+		BigInteger totient = (p_minus_one.multiply(q_minus_one)).divide(p_minus_one.gcd(q_minus_one));
 		return totient;
 	}
 	
@@ -89,7 +85,7 @@ public class Key_Maker {
 	private BigInteger calculate_private_key_exponent(BigInteger totient) {
 		BigInteger r1 = totient;
 		BigInteger t1 = BigInteger.ZERO;
-		BigInteger r2 = publicKeyExponent;
+		BigInteger r2 = public_key_exponent;
 		BigInteger t2 = BigInteger.ONE;
 		BigInteger r3 = r1.remainder(r2);
 		BigInteger q = r1.divide(r2);
@@ -113,7 +109,7 @@ public class Key_Maker {
 	
 	private void check_p_and_q_are_prime(BigInteger t3, BigInteger totient) {
 		if (t3.equals(totient)) {
-			randomNumbersAreNotPrime = false;
+			random_numbers_are_not_prime = false;
 		}
 	}
 	
@@ -125,9 +121,9 @@ public class Key_Maker {
 		}
 	}
 	
-	private void store_values_to_fields(BigInteger modulus, BigInteger privateKeyExponent) {
-		public_key = new Rsa_Public_Key(modulus, publicKeyExponent, "self");
-		private_key = new Rsa_Private_Key(modulus, privateKeyExponent);
+	private void store_new_keys_to_fields(BigInteger modulus, BigInteger private_key_exponent) {
+		public_key = new Rsa_Public_Key(modulus, public_key_exponent, "self");
+		private_key = new Rsa_Private_Key(modulus, private_key_exponent);
 	}
 	
 	public Key_Set getNewKeys() {
