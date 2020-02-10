@@ -47,9 +47,7 @@ public class Key_Maker {
 		BigInteger totient = calculate_totient(p, q);
 		BigInteger privateKeyExponent = calculate_private_key_exponent(totient);
 		
-		//Create RsaKey objects and store to fields
-		public_key = new Rsa_Public_Key(modulus, publicKeyExponent, "self");
-		private_key = new Rsa_Private_Key(modulus, privateKeyExponent);
+		store_values_to_fields(modulus, privateKeyExponent);
 	}
 	
 	private void generate_random_large_primes() {
@@ -87,13 +85,7 @@ public class Key_Maker {
 		return totient;
 	}
 	
-	/**
-	 * A helper method for generateNewKeys() that calculates a private key exponent from a public key exponent and totient(modulus)
-	 * via the Extended Euclidean Algorithm.
-	 * @param publicExponent The previously calculated exponent of the public key.
-	 * @param totient The totient of the modulus of the public and private key.
-	 * @return The exponent of the private key corresponding to the input public key values.
-	 */
+	//Extended Euclidean Algorithm
 	private BigInteger calculate_private_key_exponent(BigInteger totient) {
 		BigInteger r1 = totient;
 		BigInteger t1 = BigInteger.ZERO;
@@ -102,7 +94,7 @@ public class Key_Maker {
 		BigInteger r3 = r1.remainder(r2);
 		BigInteger q = r1.divide(r2);
 		BigInteger t3 = t1.subtract(q.multiply(t2));
-		while (! r3.equals(BigInteger.ZERO)) {
+		while (not_zero(r3)) {
 			r1 = r2;
 			t1 = t2;
 			r2 = r3;
@@ -111,14 +103,31 @@ public class Key_Maker {
 			r3 = r1.remainder(r2);
 			t3 = t1.subtract(q.multiply(t2));
 		}
+		check_p_and_q_are_prime(t3, totient);
+		return t2_modulus_totient(t2, totient);
+	}
+	
+	private boolean not_zero(BigInteger i) {
+		return ! i.equals(BigInteger.ZERO); 
+	}
+	
+	private void check_p_and_q_are_prime(BigInteger t3, BigInteger totient) {
 		if (t3.equals(totient)) {
 			randomNumbersAreNotPrime = false;
 		}
+	}
+	
+	private BigInteger t2_modulus_totient(BigInteger t2, BigInteger totient) {
 		if (t2.compareTo(BigInteger.ZERO) < 0) {
 			return totient.add(t2);
 		} else {
 			return t2;
 		}
+	}
+	
+	private void store_values_to_fields(BigInteger modulus, BigInteger privateKeyExponent) {
+		public_key = new Rsa_Public_Key(modulus, publicKeyExponent, "self");
+		private_key = new Rsa_Private_Key(modulus, privateKeyExponent);
 	}
 	
 	public Key_Set getNewKeys() {
