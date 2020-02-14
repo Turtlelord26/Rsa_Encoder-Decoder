@@ -20,40 +20,40 @@ import rsa_module.utility.File_Accesser;
  */
 public class Rsa_Module {
 	
-	private Rsa_Public_Key publicKey;
+	private Rsa_Public_Key public_key;
 	
-	private Rsa_Private_Key privateKey;
+	private Rsa_Private_Key private_key;
 	
-	private Stringable_HashMap<String, Rsa_Public_Key> addressBook;
+	private Stringable_HashMap<String, Rsa_Public_Key> address_book;
 	
-	private File_Accesser plainTextRW;
+	private File_Accesser plain_text_file_accesser;
 	
-	private File_Accesser cipherTextRW;
+	private File_Accesser cipher_text_file_accesser;
 	
-	private File_Accesser keyTextRW;
+	private File_Accesser key_text_file_accesser;
 	
-	private Scanner scan;
+	private Scanner input_scanner;
 	
 	/**
 	 * Constructor creates and stores FileRW objects, and loads data from those files into the appropriate fields.
 	 * It then engages the user command input method.
-	 * @param plainTextFile A File object for a .txt that stores plaintext.
+	 * @param plain_text_file A File object for a .txt that stores plaintext.
 	 * @param cipherTextFile A File object for a .txt that stores ciphertext.
 	 * @param keyTextFile A File object for a .txt that stores keys.
 	 */
-	public Rsa_Module(File plainTextFile, File cipherTextFile, File keyTextFile) {
-		plainTextRW = new File_Accesser(plainTextFile);
-		cipherTextRW = new File_Accesser(cipherTextFile);
-		keyTextRW = new File_Accesser(keyTextFile);
-		addressBook = new Stringable_HashMap<String, Rsa_Public_Key>();
-		String keys[] = keyTextRW.readFile().split(System.lineSeparator());
+	public Rsa_Module(File plain_text_file, File cipherTextFile, File keyTextFile) {
+		plain_text_file_accesser = new File_Accesser(plain_text_file);
+		cipher_text_file_accesser = new File_Accesser(cipherTextFile);
+		key_text_file_accesser = new File_Accesser(keyTextFile);
+		address_book = new Stringable_HashMap<String, Rsa_Public_Key>();
+		String keys[] = key_text_file_accesser.readFile().split(System.lineSeparator());
 		if (detectExistingKeys(keys)) {
 			loadExistingKeysIntoAddressBook(keys);
 		} else {
 			generateNewKeys();
 		}
-		scan = new Scanner(System.in);
-		scan.useDelimiter(System.lineSeparator());
+		input_scanner = new Scanner(System.in);
+		input_scanner.useDelimiter(System.lineSeparator());
 		commandSwitch();
 	}
 	
@@ -66,14 +66,14 @@ public class Rsa_Module {
 	}
 	
 	private void loadExistingKeysIntoAddressBook(String[] keys) {
-		this.privateKey = new Rsa_Private_Key(keys[0]);
+		this.private_key = new Rsa_Private_Key(keys[0]);
 		Rsa_Public_Key newkey;
 		for (int i = 1; i < keys.length; i++) {
 			newkey = new Rsa_Public_Key(keys[i]);
 			if (newkey.getID().equals("self")) {
-				this.publicKey = newkey;
+				this.public_key = newkey;
 			}
-			addressBook.put(newkey.getID(), newkey);
+			address_book.put(newkey.getID(), newkey);
 		}
 	}
 	
@@ -95,60 +95,59 @@ public class Rsa_Module {
 	 */
 	public void commandSwitch() {
 		System.out.println("Enter a command, or type \"help\" for a list of commands.");
-		String token = scan.next();
+		String token = input_scanner.next();
 		String command = token.trim();
 		while (! command.equals("exit")) {
 			/**
 			 * Command to encrypt available plaintext with own public key.
 			 */
 			if (command.equals("encrypt to self")) {
-				String plainText = plainTextRW.readFile();
-				String cipherText = new Rsa_Encoder(publicKey, plainText).getCipherText();
-				cipherTextRW.writeToFile(cipherText + System.lineSeparator() + publicKey.toString());
+				String plainText = plain_text_file_accesser.readFile();
+				String cipherText = new Rsa_Encryption_Operator(public_key, plainText).getCipherText();
+				cipher_text_file_accesser.writeToFile(cipherText + System.lineSeparator() + public_key.toString());
 				System.out.println("Encrypted text written to cipherText.txt");
-			/**
-			 * Command to encrypt available plaintext using a stored public key.
-			 */
 			} else if (command.equals("encrypt")) {
-				encrypt();
+				select_recipient_then_encrypt();
 			} else if (command.equals("decrypt")) {
 				decrypt();
 			} else if (command.equals("generate new keys")) {
-				confirmGenerateNewKeys();
+				if (confirmGenerateNewKeys()) {
+					generateNewKeys();
+				}
 			} else if (command.equals("help")) {
 				printHelpText();
 			} else {
 				System.out.println("Unrecognized Command.");
 			}
 			System.out.println("Enter a command, or type \"help\" for a list of commands.");
-			token = scan.next();
+			token = input_scanner.next();
 			command = token.trim();
 		}
-		scan.close();
+		input_scanner.close();
 		//Program Terminates
 	}
 	
-	private void encrypt() {
+	private void select_recipient_then_encrypt() {
 		System.out.println("Enter an ID to select the corresponding public key.");
-		String token = scan.next();
+		String token = input_scanner.next();
 		String command = token.trim();
-		Rsa_Public_Key key = addressBook.get(command);
-		if (key == null) {
+		Rsa_Public_Key recipient_key = address_book.get(command);
+		if (recipient_key == null) {
 			System.out.println("Error: entered ID has no matching Key stored.");
 		} else {
 			System.out.println("Type an identifier to append your public key to this message, or type \"skip\" "
 					+ "to skip this step. Identifiers must not contain commas, colons, or newlines.");
-			token = scan.next();
+			token = input_scanner.next();
 			command = token.trim();
-			if (isValidPubKeyID(command)) {
-				encryptTextAndWriteToFile(key, command);
+			if (is_valid_public_key_id(command)) {
+				encrypt(recipient_key, command);
 			} else {
-				System.out.println("Error: malformed identifer entered. No text encrypted.");
+				print_bad_identifier_input_error_message();
 			}
 		}
 	}
 	
-	private Boolean isValidPubKeyID(String command) {
+	private Boolean is_valid_public_key_id(String command) {
 		return ! command.equals("skip") && 
 				! command.equals("self") && 
 				command.indexOf(',') == -1 && 
@@ -156,19 +155,43 @@ public class Rsa_Module {
 				command.indexOf('\n') == -1;
 	}
 	
-	private void encryptTextAndWriteToFile(Rsa_Public_Key key, String identifier) {
-		String plainText = plainTextRW.readFile();
-		String cipherText = new Rsa_Encoder(key, plainText).getCipherText();
-		Rsa_Public_Key outgoingKey = new Rsa_Public_Key(publicKey.getModulus(), publicKey.getExponent(), identifier);
-		cipherTextRW.writeToFile(cipherText + System.lineSeparator() + outgoingKey.toString());
+	private void encrypt(Rsa_Public_Key recipient_key, String command) {
+		String plain_text = retrieve_plain_text();
+		String cipher_text = encrypt_plain_text(recipient_key, plain_text);
+		Rsa_Public_Key outgoing_key = copy_public_key_adding_identifier(command);
+		write_cipher_text_with_outgoing_key(cipher_text, outgoing_key);
+		print_successful_encryption_confirmation_message();
+	}
+	
+	private String retrieve_plain_text() {
+		return plain_text_file_accesser.readFile();
+	}
+	
+	private String encrypt_plain_text(Rsa_Public_Key recipient_key, String plain_text) {
+		return new Rsa_Encryption_Operator(recipient_key, plain_text).getCipherText();
+	}
+	
+	private Rsa_Public_Key copy_public_key_adding_identifier(String identifier) {
+		return new Rsa_Public_Key(public_key.getModulus(), public_key.getExponent(), identifier);
+	}
+	
+	private void write_cipher_text_with_outgoing_key(String cipher_text, Rsa_Public_Key outgoing_key) {
+		cipher_text_file_accesser.writeToFile(cipher_text + System.lineSeparator() + outgoing_key.toString());
+	}
+	
+	private void print_successful_encryption_confirmation_message() {
 		System.out.println("Encrypted text written to cipherText.txt");
 	}
 	
+	private void print_bad_identifier_input_error_message() {
+		System.out.println("Error: malformed identifer entered. No text encrypted.");
+	}
+	
 	private void decrypt() {
-		String[] cipherFileText = cipherTextRW.readFile().split(System.lineSeparator());
+		String[] cipherFileText = cipher_text_file_accesser.readFile().split(System.lineSeparator());
 		String cipherText = cipherFileText[0];
-		String plainText = new Rsa_Decoder(privateKey, cipherText).getPlainText();
-		plainTextRW.writeToFile(plainText);
+		String plainText = new Rsa_Decryption_Operator(private_key, cipherText).getPlainText();
+		plain_text_file_accesser.writeToFile(plainText);
 		System.out.println("Decrypted text written to plainText.txt");
 		if (cipherTextHasAppendedID(cipherFileText) && isUnsavedPublicKeyID(cipherFileText[1])) {
 			saveNewPublicKey(cipherFileText);
@@ -180,47 +203,48 @@ public class Rsa_Module {
 	}
 	
 	private boolean isUnsavedPublicKeyID(String cipherTextPublicKey) {
-		return ! addressBook.containsKey(cipherTextPublicKey.substring(0, cipherTextPublicKey.indexOf(':')));
+		return ! address_book.containsKey(cipherTextPublicKey.substring(0, cipherTextPublicKey.indexOf(':')));
 	}
 	
 	private void saveNewPublicKey(String[] cipherFileText) {
 		String[] appendedKey = cipherFileText[1].split(":");
 		String incomingID = appendedKey[0];
 		String[] incomingKey = appendedKey[1].split(",");
-		addressBook.put(incomingID, new Rsa_Public_Key(
+		address_book.put(incomingID, new Rsa_Public_Key(
 				new BigInteger(incomingKey[0]), new BigInteger(incomingKey[1]), incomingID));
 		StringBuilder newKeyText = new StringBuilder();
-		newKeyText.append("selfPrivate: " + privateKey.toString() + System.lineSeparator());
-		for (Rsa_Public_Key key : addressBook.values()) {
+		newKeyText.append("selfPrivate: " + private_key.toString() + System.lineSeparator());
+		for (Rsa_Public_Key key : address_book.values()) {
 			newKeyText.append(key.toString() + System.lineSeparator());
 		}
-		keyTextRW.writeToFile(newKeyText.toString());
+		key_text_file_accesser.writeToFile(newKeyText.toString());
 		System.out.println("Sender key saved with ID: " + incomingID);
 	}
 	
-	private void confirmGenerateNewKeys() {
+	private boolean confirmGenerateNewKeys() {
 		System.out.println("Are you sure? Generating new keys is irreversible and any ciphertext encoded with "
 				+ "old keys will be indecipherable.\nType \"Confirm\" (no quotes) to generate new keys.");
-		String token = scan.next();
+		String token = input_scanner.next();
 		String command = token.trim();
 		if (command.equals("Confirm")) {
-			generateNewKeys();
+			return true;
 		} else {
 			System.out.println("New keys have not been generated.");
+			return false;
 		}
 	}
 	
 	private void generateNewKeys() {
 		Key_Set newKeys = new Key_Maker().getNewKeys();
-		publicKey = newKeys.getPublicKey();
-		privateKey = newKeys.getPrivateKey();
+		public_key = newKeys.getPublicKey();
+		private_key = newKeys.getPrivateKey();
 		saveKeysToFile();
 	}
 	
 	private void saveKeysToFile() {
-		String priKey = "selfPrivate:" + privateKey.toString() + System.lineSeparator();
-		addressBook.put("self", publicKey);
-		keyTextRW.writeToFile(priKey + addressBook.toString());
+		String priKey = "selfPrivate:" + private_key.toString() + System.lineSeparator();
+		address_book.put("self", public_key);
+		key_text_file_accesser.writeToFile(priKey + address_book.toString());
 	}
 	
 	private void printHelpText() {

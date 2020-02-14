@@ -10,7 +10,7 @@ import rsa_module.data_structures.Rsa_Key;
  * Individual objects intended to be lightweight but one-use.
  * @author James Talbott
  */
-public class Rsa_Decoder extends Rsa_Encryption_Operator {
+public class Rsa_Decryption_Operator extends Rsa_Operator {
 	
 	private Rsa_Key privateKey;
 	
@@ -18,7 +18,7 @@ public class Rsa_Decoder extends Rsa_Encryption_Operator {
 	
 	private String cipherText;
 	
-	public Rsa_Decoder(Rsa_Key privateKey, String cipherText) {
+	public Rsa_Decryption_Operator(Rsa_Key privateKey, String cipherText) {
 		this.privateKey = privateKey;
 		this.cipherText = cipherText;
 		this.plainText = convertNumericTextToPlainText(decryptCipherTextintoNumericText());
